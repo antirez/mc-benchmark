@@ -1,0 +1,7 @@
+This is a straightforward port of redis-benchmark to memcache protocol.
+
+This way it is possible to test Redis and Memcache with not just an apple to
+apple comparison, but also using the exactly same mouth... :)
+
+For feedbacks please send a message to the Redis Google Group
+Alternatively drop an email t$ antirez at gmail dot com
