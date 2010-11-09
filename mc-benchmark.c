@@ -54,6 +54,8 @@
 
 #define MAX_LATENCY 5000
 
+#define MAX_HOSTS 50
+
 #define MCB_NOTUSED(V) ((void) V)
 
 static struct config {
@@ -67,7 +69,8 @@ static struct config {
     int randomkeys;
     int randomkeys_keyspacelen;
     aeEventLoop *el;
-    char *hostip;
+    char *hostip[MAX_HOSTS];
+    int numhosts;
     int hostport;
     int keepalive;
     long long start;
@@ -316,8 +319,14 @@ static void writeHandler(aeEventLoop *el, int fd, void *privdata, int mask)
 static client createClient(void) {
     client c = zmalloc(sizeof(struct _client));
     char err[ANET_ERR_LEN];
+    static int nexthost = 0; /* Get the host via a round robin method */
+    char *hostip = config.hostip[nexthost++];
 
-    c->fd = anetTcpNonBlockConnect(err,config.hostip,config.hostport);
+    if (nexthost == config.numhosts) {
+      nexthost = 0;
+    }
+
+    c->fd = anetTcpNonBlockConnect(err,hostip,config.hostport);
     if (c->fd == ANET_ERR) {
         zfree(c);
         fprintf(stderr,"Connect: %s\n",err);
@@ -389,6 +398,7 @@ static void endBenchmark(void) {
 
 void parseOptions(int argc, char **argv) {
     int i;
+    int numhosts = 0;
 
     for (i = 1; i < argc; i++) {
         int lastarg = i==argc-1;
@@ -408,7 +418,11 @@ void parseOptions(int argc, char **argv) {
                 printf("Can't resolve %s\n", argv[i]);
                 exit(1);
             }
-            config.hostip = ip;
+            if (numhosts >= MAX_HOSTS) {
+                printf("Too many hosts, max is %d\n", MAX_HOSTS);
+                exit(1);
+            }
+            config.hostip[numhosts++] = ip;
             i++;
         } else if (!strcmp(argv[i],"-p") && !lastarg) {
             config.hostport = atoi(argv[i+1]);
@@ -455,6 +469,7 @@ void parseOptions(int argc, char **argv) {
             exit(1);
         }
     }
+    config.numhosts = numhosts;
 }
 
 int showThroughput(struct aeEventLoop *eventLoop, long long id, void *clientData) {
@@ -493,7 +508,8 @@ int main(int argc, char **argv) {
     config.clients = listCreate();
     config.latency = zmalloc(sizeof(int)*(MAX_LATENCY+1));
 
-    config.hostip = "127.0.0.1";
+    config.hostip[0] = "127.0.0.1";
+    config.numhosts = 1;
     config.hostport = 11211;
 
     parseOptions(argc,argv);
