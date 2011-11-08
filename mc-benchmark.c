@@ -220,7 +220,7 @@ static int readLen(char *p, int *len) {
 
 static void readHandler(aeEventLoop *el, int fd, void *privdata, int mask)
 {
-    char buf[1024], *p;
+    char buf[1024*16], *p;
     int nread, pos=0, len=0;
     client c = privdata;
     MCB_NOTUSED(el);
@@ -417,7 +417,7 @@ void parseOptions(int argc, char **argv) {
             config.datasize = atoi(argv[i+1]);
             i++;
             if (config.datasize < 1) config.datasize=1;
-            if (config.datasize > 1024*1024) config.datasize = 1024*1024;
+            if (config.datasize > 1024*1024*1024) config.datasize = 1024*1024*1024;
         } else if (!strcmp(argv[i],"-r") && !lastarg) {
             config.randomkeys = 1;
             config.randomkeys_keyspacelen = atoi(argv[i+1]);
